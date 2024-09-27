@@ -2,34 +2,78 @@ package main
 
 import (
 	"fmt"
-	"time"
+	"io/ioutil"
+	"net/http"
+	"strings"
 )
 
-func prod(jobs chan<- int32, count int32) {
-	var i int32
-	for i = 1; i <= count; i++ {
-		fmt.Println("Prod sent the work", i)
-		jobs <- i
-		time.Sleep(100 * time.Millisecond)
-	}
-	close(jobs)
+func requestone(w http.ResponseWriter, req *http.Request) {
+
+	fmt.Fprintf(w, "request_one\n")
 }
 
-func user(jobs <-chan int32, done chan<- bool) {
-	for job := range jobs {
-		fmt.Println("User has done the work", job)
-		time.Sleep(100 * time.Millisecond)
+func requesttwo(w http.ResponseWriter, req *http.Request) {
+	switch req.Method {
+	case "POST":
+		fmt.Fprintf(w, "POST request\n")
+	case "GET":
+		fmt.Fprintf(w, "GET request\n")
+	case "PUT":
+		fmt.Fprintf(w, "PUT request\n")
+	case "DELETE":
+		fmt.Fprintf(w, "DELETE request\n")
+
 	}
-	done <- true
+}
+
+func requesthre(w http.ResponseWriter, req *http.Request) {
+	url := "https://github.com/vladislavprovich"
+
+	res, err := http.Get(url)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+	}
+	html := string(body)
+	if strings.Contains(html, "Popular repositories") {
+		fmt.Fprintf(w, "Popular repositories")
+	} else {
+		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
+	}
+}
+
+func getyoutube(w http.ResponseWriter, req *http.Request) {
+	url := "https://www.youtube.com"
+
+	res, err := http.Get(url)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+	}
+
+	fmt.Fprintf(w, string(body))
+	//html := string(body)
+
 }
 
 func main() {
-	jobs := make(chan int32, 5) // Buffered channel
-	done := make(chan bool)
 
-	go prod(jobs, 10)
-	go user(jobs, done)
+	http.HandleFunc("/requestone", requestone)
+	http.HandleFunc("/requesttwo", requesttwo)
+	http.HandleFunc("/checkgithub", requesthre)
+	http.HandleFunc("/getyoutube", getyoutube)
 
-	<-done // wait user done jobs
-	fmt.Println("All jobs done")
+	http.ListenAndServe(":8080", nil)
 }
