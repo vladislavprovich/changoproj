@@ -24,10 +24,10 @@ func user(jobs <-chan int32, done chan<- bool) {
 }
 
 func main() {
-	jobs := make(chan int32)
+	jobs := make(chan int32, 5) // Buffered channel
 	done := make(chan bool)
 
-	go prod(jobs, 10) // Buffered channel
+	go prod(jobs, 10)
 	go user(jobs, done)
 
 	<-done // wait user done jobs
