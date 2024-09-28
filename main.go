@@ -2,36 +2,30 @@ package main
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
-func prod(jobs chan<- int32, count int32) {
-	var i int32
-	for i = 1; i <= count; i++ {
-		fmt.Println("Prod sent the work", i)
-		jobs <- i
-		time.Sleep(100 * time.Millisecond)
+func prod(id int32) {
+	for i := int32(1); i <= 5; i++ {
+		id = i
+		fmt.Println("Prod start job", id)
+		time.Sleep(2 * time.Second)
+		fmt.Println("Prod end job", id)
 	}
-	close(jobs)
-}
-
-func user(jobs <-chan int32, done chan<- bool) {
-	for job := range jobs {
-		fmt.Println("User has done the work", job)
-		time.Sleep(100 * time.Millisecond)
-	}
-	done <- true
 }
 
 func main() {
-	jobs := make(chan int32, 5) // Buffered channel
-	done := make(chan bool)
 
-	go prod(jobs, 10)
-	go user(jobs, done)
+	var wg sync.WaitGroup
 
-	<-done // wait user done jobs
-	fmt.Println("All jobs done")
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		prod(1)
+	}()
+
+	wg.Wait()
+	fmt.Println("Prod end all job")
 }
-
-//new brach
