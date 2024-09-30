@@ -1,37 +1,61 @@
 package main
 
 import (
-	"fmt"
-	"time"
+	"log"
+	"sync"
 )
 
-func prod(jobs chan<- int32, count int32) {
-	var i int32
-	for i = 1; i <= count; i++ {
-		fmt.Println("Prod sent the work", i)
-		jobs <- i
-		time.Sleep(100 * time.Millisecond)
-	}
-	close(jobs)
+type unit struct {
+	energy int32
+	mu     sync.Mutex
 }
 
-func user(jobs <-chan int32, done chan<- bool) {
-	for job := range jobs {
-		fmt.Println("User has done the work", job)
-		time.Sleep(100 * time.Millisecond)
+func (u *unit) spend(spend int32) error {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if u.energy-spend < 0 {
+		return nil
 	}
-	done <- true
+
+	u.energy = u.energy - spend
+	log.Printf("Затрачено %d енергії, залишилося %d ", spend, u.energy)
+	return nil
+}
+
+func jump(u *unit) {
+	if err := u.spend(3); err != nil {
+		log.Printf("Не вистачає енергії")
+	}
+
+}
+
+func sprint(u *unit) {
+	if err := u.spend(4); err != nil {
+		log.Printf("Не вистачає енергії")
+	}
+
 }
 
 func main() {
-	jobs := make(chan int32, 5) // Buffered channel
-	done := make(chan bool)
+	var (
+		unitsetings = unit{energy: 5}
+		wg          sync.WaitGroup
+	)
 
-	go prod(jobs, 10)
-	go user(jobs, done)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		jump(&unitsetings)
+	}()
 
-	<-done // wait user done jobs
-	fmt.Println("All jobs done")
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		sprint(&unitsetings)
+	}()
+
+	wg.Wait()
+
 }
 
-//new brach
+//task mutex
