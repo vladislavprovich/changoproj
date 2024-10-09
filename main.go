@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/PuerkitoBio/goquery"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -29,23 +31,23 @@ func requesttwo(w http.ResponseWriter, req *http.Request) {
 func requesthre(w http.ResponseWriter, req *http.Request) {
 	url := "https://github.com/vladislavprovich"
 
-	res, err := http.Get(url)
+	resp, err := http.Get(url)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Fatal("Помилка при завантаженні сторінки:", err)
 	}
 
-	defer res.Body.Close()
+	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		log.Fatal("Помилка при парсингу HTML:", err)
 	}
-	html := string(body)
-	if strings.Contains(html, "Popular repositories") {
-		fmt.Fprintf(w, "Popular repositories")
-	} else {
-		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
-	}
+	doc.Find("h2.f4.mb-2.text-normal").Each(func(i int, s *goquery.Selection) {
+		html, _ := s.Html()
+		fmt.Fprintf(w, "Знайдений фрагмент HTML:")
+		fmt.Fprintf(w, html)
+	})
+
 }
 
 func getyoutube(w http.ResponseWriter, req *http.Request) {
@@ -64,7 +66,13 @@ func getyoutube(w http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Fprintf(w, string(body))
-	//html := string(body)
+	html := string(body)
+
+	if strings.Contains(html, "Назад") {
+		fmt.Fprintf(w, "<h1>Назад<h1>")
+	} else {
+		fmt.Fprintf(w, "error")
+	}
 
 }
 
